@@ -2,7 +2,6 @@
 
 from unittest import TestCase
 from multstars.data_io import get_example_data_file_path, load_data
-import pandas as  pd
 
 class TestIo(TestCase):
     def test_data_io(self):

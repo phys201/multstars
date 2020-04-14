@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 # from PHY201 example
-def get_example_data_file_path(filename, data_dir='example_data'):
+def get_example_data_file_path(filename, data_dir='data'):
     # __file__ is the location of the source file currently in use (so
     # in this case io.py). We can use it as base path to construct
     # other paths from that should end up correct on other machines or

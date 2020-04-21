@@ -19,8 +19,9 @@ def log_likelihood(data, mean, sigma):
     p_sep_e = data['E_SEP_PHYSICAL'].values
 
     # gaussian
-    likelihoods = np.exp(-(p_sep-mean)**2 / (2*(sigma**2 + p_sep_e**2))) / (np.sqrt(2*np.pi) * (sigma**2 + p_sep_e**2))
-    return np.log(likelihoods.sum())
+    G1 = 1 / np.sqrt(2*np.pi * (sigma**2 + p_sep_e**2))             # non-exponential component of Gaussian
+    G2 = (-(p_sep-mean)**2 / (2*(sigma**2 + p_sep_e**2))).sum()     # exponential component
+    return np.log10(G1.prod()) + G2
 
 
 

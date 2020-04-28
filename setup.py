@@ -7,7 +7,7 @@ setup(name='multstars',
       author='Jasmine, Claire, and Victoria',
       author_email='jasmine.gill@cfa.harvard.edu',
       license='GPLv3',
-      install_requires=['numpy','matplotlib','astropy','pandas','seaborn','pymc3'],
+      install_requires=['numpy','matplotlib','pandas','seaborn','pymc3'],
       test_suite='nose.collector',
       tests_require=['nosetests'])
 

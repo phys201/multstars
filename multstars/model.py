@@ -25,18 +25,23 @@ def log_likelihood(data, mean, sigma):
 
 
 
-# function to fit the model (from week 9 seciton notebook)
-def pymc3_fit(data, nsteps=10000, center_max=1000, metropolis=False):
+def pymc3_fit(data, nsteps=10000, center_max=1000):
+    p_sep = data['SEP_PHYSICAL'].values
+    p_sep_e = data['E_SEP_PHYSICAL'].values
     
     with pm.Model() as linear_model:
-        center = pm.Uniform('center', lower=0, upper=center_max)  # Continuous uniform log-likelihood
-        width = pm.HalfFlat('width')                   # Improper flat prior over the positive reals (Siva & Skilling 2006)
-
-        loglike = log_likelihood(data, center, width)
-        pm.Potential('obs', loglike)
         
-        step = pm.Metropolis() if metropolis else None
-        traces = pm.sample(tune=nsteps, draws=nsteps, step=step, chains=1)
+        # normal distributions for both priors, centered around expected values
+        # this works better with pymc3's sampling than flat priors 
+        center = pm.Normal('center', mu=10, sigma=100)   
+        width = pm.Normal('width', mu=100, sigma=1000)                           
+
+        # defining the gaussian model for physical separations (in AU)
+        sep_physical = pm.Normal('sep_physical', center, width)
+        
+        sep_catalog = pm.Normal('sep_observed', mu=sep_physical, sigma=p_sep_e, observed=p_sep)
+        
+        traces = pm.sample(tune=nsteps, draws=nsteps, step=None, chains=1)
 
     df = pm.trace_to_dataframe(traces)
     return df

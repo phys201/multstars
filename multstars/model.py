@@ -62,7 +62,8 @@ def pymc3_hrchl_fit(data, nsteps=1000):
         width = pm.Deterministic('width', center-(center*width_diff))
         
         # power_index must be bound to work with the Kumaraswamy model
-        power_index = pm.Gamma('power_index', mu=1, sigma=.5)
+        p = pm.Gamma('p', mu=0.2, sigma=.5)
+        power_index = pm.Deterministic('power_index', 1+p)
         
         
         # MODELS OF POPULATIONS PHYSICAL PROPERTIES
@@ -88,33 +89,17 @@ def pymc3_hrchl_fit(data, nsteps=1000):
         # -----------------
         
         # separations
-        sep_observed = pm.TruncatedNormal('sep_observed', mu=sep_angular, sigma=asep_err, observed=asep)
+        seps_truncated = pm.Bound(pm.Normal, upper=4)('seps_truncated', mu=sep_angular, sigma=asep_err)
+        sep_observed = pm.Normal('sep_observed', mu=seps_truncated, sigma=asep_err, observed=asep)
         
         # contrast ratios
-        cr_observed_inverse = pm.TruncatedNormal('cr_observed', mu=contrast_ratios_inverted, sigma=cr_err/cr, observed=1/cr)
+        cr_observed_inverse = pm.Normal('cr_observed', mu=contrast_ratios_inverted, sigma=cr_err/cr, observed=1/cr)
         
         
         # ACCOUNTING FOR OBSERVATION LIMITS
         # ------------------
         
-        # RVs for the number of data points which fall outside of the observational range
-        # Jeffrey's prior, following https://arxiv.org/pdf/1804.02474.pdf
-        n_seps_trunc_a = pm.Uniform('n_seps_trunc_a', lower=1, upper=4)
-        n_seps_trunc = pm.Potential('n_seps_trunc', -tt.log(n_seps_trunc_a))
-        
-        n_cr_trunc_a = pm.Uniform('n_cr_trunc_a', lower=1, upper=4)
-        n_cr_trunc = pm.Potential('n_cr_trunc', -tt.log(n_cr_trunc_a))
-        
-        
-        # integrate out the points which fall outside of the observation limits from the likelihood
-        
-        # separation limits
-        right_truncated_seps = pm.Potential('seps_truncated', right_censored_likelihood(
-            sep_observed, asep_err, n_seps_trunc, sep_ang_max))
-        
-        # contrast ratio limits - function of separations
-        high_truncated_crs = pm.Potential('crs_truncated', left_censored_likelihood(
-            cr_observed_inverse, cr_err/cr, n_cr_trunc, 1/cr_max(sep_observed)))
+        ##truncated_crs = pm.TruncatedNormal('crs_trunc', mu=cr_observed_inverse, sigma=cr_err*cr_observed_inverse, lower=1/7)
 
         
         

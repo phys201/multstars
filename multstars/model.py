@@ -27,10 +27,10 @@ def right_censored_likelihood(mu, sigma, n_right_censored, upper_bound):
 sep_ang_max = 4.0
 
 
-# limit for contrast ratio [delta mag]
+# limit for contrast ratio
 # this is a rough approximation made by eye - should eventually be updated
-def cr_max(separation):
-    return 1.8 * np.log(separation) + 3.8
+def icr_max(separation):
+    return 1 / (1.8 * np.log(separation) + 3.8)
 
 # from inverse mass ratios to inverse contrast ratios
 # this is an empirical relationship based on the results from (Lamman et al.) Section 4.4
@@ -44,9 +44,12 @@ def pymc3_hrchl_fit(data, nsteps=1000):
     
     asep = data['asep'].values
     asep_err = data['asep_err'].values
-    cr = data['cr'].values
+    cr = np.abs(data['cr'].values)
     cr_err = data['cr_err'].values
     parallax = data['parallax'].values
+    
+    cr_inverse = 1/cr
+    cr_err_inverse = cr_err/cr
 
 
     with pm.Model() as hierarchical_model:
@@ -55,24 +58,26 @@ def pymc3_hrchl_fit(data, nsteps=1000):
         # -------------
         
         # Separations
-        center = pm.Gamma('center', mu=20, sigma=10)
+        center = pm.Gamma('center', mu=20, sigma=15)
         # the Gamma distribution for separations should have 0 < width < center, 
         # because we're assuming that the peak is above 0 for separations
         width_diff = pm.Beta('width_difference', alpha=2, beta=2)
         width = pm.Deterministic('width', center-(center*width_diff))
         
         # power_index must be bound to work with the Kumaraswamy model
-        power_index = pm.Gamma('power_index', mu=1, sigma=.5)
+        ##p = pm.Gamma('p', mu=0.3, sigma=.25)
+        ##power_index = pm.Deterministic('power_index', 1+p)
+        power_index = pm.Normal('power_index', mu=1.2, sigma=.2)
         
         
         # MODELS OF POPULATIONS PHYSICAL PROPERTIES
         # --------------
         
         # Gaussian model for separations (in AU)
-        sep_physical = pm.Gamma('sep_physical', mu=center, sigma=width)
+        sep_physical = pm.Gamma('sep_physical', mu=center, sigma=width, shape=len(asep))
         
         # Mass Ratios - inverted
-        mass_ratios_inverted = pm.Pareto('mass_ratios_inverted', alpha=power_index, m=1)
+        mass_ratios_inverted = pm.Pareto('mass_ratios_inverted', alpha=power_index, m=1)#, shape=len(cr_inverse))
         
         
         # MAPPING FROM PHYSICAL TO OBSERVED PROPERTIES
@@ -84,37 +89,31 @@ def pymc3_hrchl_fit(data, nsteps=1000):
         # inverted mass ratios to inverted contrast ratios
         contrast_ratios_inverted = pm.Deterministic('contrast_ratios_inverted', imr_to_icr(mass_ratios_inverted))
         
+        
+        
         # LIKELIHOODS, WITH MEASUREMENT ERROR
         # -----------------
         
         # separations
-        sep_observed = pm.TruncatedNormal('sep_observed', mu=sep_angular, sigma=asep_err, observed=asep)
+        sep_observed = pm.Normal('sep_observed', mu=sep_angular, sigma=asep_err, observed=asep)
         
         # contrast ratios
-        cr_observed_inverse = pm.TruncatedNormal('cr_observed', mu=contrast_ratios_inverted, sigma=cr_err/cr, observed=1/cr)
+        cr_observed_inverse = pm.Normal('cr_observed', mu=contrast_ratios_inverted, sigma=cr_err_inverse, observed=cr_inverse)
         
         
         # ACCOUNTING FOR OBSERVATION LIMITS
         # ------------------
         
-        # RVs for the number of data points which fall outside of the observational range
-        # Jeffrey's prior, following https://arxiv.org/pdf/1804.02474.pdf
-        n_seps_trunc_a = pm.Uniform('n_seps_trunc_a', lower=1, upper=4)
-        n_seps_trunc = pm.Potential('n_seps_trunc', -tt.log(n_seps_trunc_a))
-        
-        n_cr_trunc_a = pm.Uniform('n_cr_trunc_a', lower=1, upper=4)
-        n_cr_trunc = pm.Potential('n_cr_trunc', -tt.log(n_cr_trunc_a))
-        
-        
         # integrate out the points which fall outside of the observation limits from the likelihood
+        # pm.Potential accounts for truncation and normalizes likelihood
         
         # separation limits
-        right_truncated_seps = pm.Potential('seps_truncated', right_censored_likelihood(
-            sep_observed, asep_err, n_seps_trunc, sep_ang_max))
+        truncated_seps_upper = pm.Potential('upper_truncated_seps', normal_lccdf(sep_observed, asep_err, sep_ang_max))
+        ##truncated_seps_lower = pm.Potential('upper_truncated_seps', normal_lccdf(sep_observed, asep_err, sep_ang_max))
         
         # contrast ratio limits - function of separations
-        high_truncated_crs = pm.Potential('crs_truncated', left_censored_likelihood(
-            cr_observed_inverse, cr_err/cr, n_cr_trunc, 1/cr_max(sep_observed)))
+        truncated_crs = pm.Potential('crs_truncated', normal_lccdf(cr_observed_inverse, cr_err_inverse, icr_max(sep_observed)))
+        ##truncated_crs = pm.Potential('crs_truncated', normal_lccdf(cr_observed_inverse, cr_err_inverse, 1/7))
 
         
         

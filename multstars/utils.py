@@ -1,24 +1,29 @@
 # imports
-
 import numpy as np
+import pandas as pd
 
 def lognorm_peak(mu, sigma):
     '''Find the peak of a lognormal distribution, given mu and sigma'''
     return(np.exp(mu-sigma))
 
-# limit for high contrast ratio and low separations
-# this is a rough approximation made by eye - should eventually be updated
-def icr_max(separation):
-    '''returns the inverse of the maximum contrast ratio which can be detected at a given separations'''
-    return 1 / (1.8 * np.log(separation) + 3.8)
+def estimate_MAP(samples, *args):
+    '''Estimate the MAP values
+    Input:
+    ---
+    samples: pandas dataframe
+        dataframe of MCMC traces
+    *args: strings
+        names of parameters that are fit in the model, e.g. width, center, power_index
 
-def sep_min(icr):
-    '''returns the maxmimum separation that can be detected for a given inverse contrast ratio'''
-    cr = 1/icr
-    return np.exp((cr-3.8)/1.8)
+    Return:
+    ---
+    MAP_df: pandas dataframe
+        dataframe with columns: parameter (from the input *args), lower_unc, value, upper_unc. The MAP of each parameter is value - lower unc + upper_unc'''
 
-# from inverse mass ratios to inverse contrast ratios
-# this is an empirical relationship based on the results from (Lamman et al.) Section 4.4
-def imr_to_icr(x):
-    g = np.poly1d([ 20.34258759, -63.07636188,  72.52402942, -40.42916102, 10.64895881])
-    return 1 / g(1/x)
+    q = samples.quantile([0.16,0.50,0.84], axis=0)
+    MAP_df = pd.DataFrame({'parameter':[],'lower_unc':[],'MAP':[],'upper_unc':[]})
+    for arg in args:
+        lower, value, upper = q[arg]
+        dict_it = {'parameter':[arg],'lower_unc':[value-lower],'MAP':[value],'upper_unc':[value+upper]}
+        MAP_df = MAP_df.append(pd.DataFrame(dict_it))
+    return(MAP_df.reset_index(drop=True))

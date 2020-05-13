@@ -2,9 +2,13 @@
 import numpy as np
 import pandas as pd
 
-def lognorm_peak(mu, sigma):
-    '''Find the peak of a lognormal distribution, given mu and sigma'''
-    return(np.exp(mu-sigma))
+
+def lognorm_peak(mu, mu_eu, mu_el, sigma, sigma_eu, sigma_el):
+    '''Find the peak of a lognormal distribution, given mu, sigma, and their errors (upper and lower)'''
+    peak = np.exp(mu-sigma)
+    peak_upper = np.sqrt(np.exp(2*mu-2*sigma)*(mu_eu**2+sigma_eu**2))
+    peak_lower = np.sqrt(np.exp(2*mu-2*sigma)*(mu_el**2+sigma_el**2))
+    return peak, peak_upper, peak_lower
 
 def estimate_MAP(samples, *args):
     '''Estimate the MAP values

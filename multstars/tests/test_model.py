@@ -10,7 +10,7 @@ data = load_data(data_path)
 
 np.random.seed(1)
 traces, samples = pymc3_hrchl_fit(data.sample(10),tune=10,nsteps=10,random_seed=1)
-MAP_df = estimate_MAP(samples,'center')
+MAP_df = estimate_MAP(samples,'center','width','power_index')
 
 class model(TestCase):
 
@@ -19,3 +19,5 @@ class model(TestCase):
 
     def test_inference(self):
         self.assertAlmostEqual(MAP_df['MAP'][0],7.768,3)
+        self.assertAlmostEqual(MAP_df['MAP'][1],0.932,3)
+        self.assertAlmostEqual(MAP_df['MAP'][2],0.200,3)

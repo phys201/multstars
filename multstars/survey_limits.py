@@ -12,7 +12,7 @@ def sep_min(contrast):
 
 def sep_max(contrast):
     '''returns the maximum separation [arcseconds] that can be detected for a given contrast ratio'''
-    return 4
+    return 4.0
 
 
 # limits for high contrast ratios

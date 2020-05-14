@@ -11,7 +11,7 @@ from multstars.survey_transformations import imr_to_cr
 from multstars.survey_limits import *
 
 
-def pymc3_hrchl_fit(data, tune=1000, nsteps=1000):
+def pymc3_hrchl_fit(data, tune=1000, nsteps=1000, random_seed=0):
     
     asep = data['asep'].values
     asep_err = data['asep_err'].values
@@ -87,7 +87,7 @@ def pymc3_hrchl_fit(data, tune=1000, nsteps=1000):
         
         # RUNNING THE FIT
         # -------------------
-        traces = pm.sample(tune=tune, draws=nsteps, step=None, chains=1, random_seed=0)
+        traces = pm.sample(tune=tune, draws=nsteps, step=None, chains=1, random_seed=random_seed)
         
         # output as dataframe
         df = pm.trace_to_dataframe(traces)
